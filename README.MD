@@ -15,3 +15,4 @@ so much more!
 -   `... status` : See current Premium Status
 - `a!prefix <prefix>` : Set the Prefix
 - `a!invite` : Invite the Bot
+- `a!server <optional:guild id>` : See Server Info
