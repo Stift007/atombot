@@ -17,3 +17,4 @@ so much more!
 - `a!invite` : Invite the Bot
 - `a!server <optional:guild id>` : See Server Info
 - `a!prefix <prefix>` : Set the Server's Prefix
+- `a!support` : Join the Support Server
