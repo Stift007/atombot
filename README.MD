@@ -18,3 +18,4 @@ so much more!
 - `a!server <optional:guild id>` : See Server Info
 - `a!prefix <prefix>` : Set the Server's Prefix
 - `a!support` : Join the Support Server
+- `a!gtnstart` : Guess the Number!
