@@ -1,9 +1,11 @@
 import datetime
 from discord.ext import commands,ipc
 import json
+from random import randrange
 from dhooks import Webhook
 import asyncio
 import random
+from discord_slash import SlashCommand,SlashContext
 import os
 
 import discord
@@ -36,12 +38,30 @@ def get_prefix(bot,msg):
 client = Atom(command_prefix=get_prefix)
 client.remove_command("help")
 
+slash = SlashCommand(client,sync_commands=True)
+
 hook = Webhook("https://discord.com/api/webhooks/895035804089462814/8gEa6NGWeJhn2rE-QYtS4SPAT2VPwAz09GRCppwRY27xOayx6W3WXL0fUqAg_wAm_k0Z")
+
 
 @client.ipc.route()
 async def get_guild_count(data):
     return len(client.guilds)
+
+
+@client.ipc.route()
+async def verify(data):
     
+    member = data.user
+    role = data.role
+    await member.add_roles(role)
+    return 0
+
+@client.ipc.route()
+async def get_guild(data):
+    
+    guild = data.id
+    return client.get_guild(guild)
+
 @client.ipc.route()
 async def get_guild_ids(data):
     final_ = []
@@ -54,6 +74,58 @@ sample = {
     "prefix":"a!",
     "has_premium":False,
 }
+
+def check(author):
+    def inner_check(message): 
+        if message.author != author:
+            return False
+        try: 
+            int(message.content) 
+            return True 
+        except ValueError: 
+            return False
+    return inner_check
+
+client.load_extension("music")
+
+@client.command()
+async def gtnclose(ctx):
+    for channel in ctx.guild.text_channels:
+        if channel.name == f'gtn-{ctx.author.id}':
+            await channel.delete()
+
+    await ctx.message.add_reaction("👌")
+
+@client.command()
+async def gtnstart(ctx,difficulty:int=10):
+    channel = await ctx.channel.category.create_text_channel(name=f"gtn-{ctx.author.id}")
+    await channel.send(f"{ctx.author.mention}, Type in your guesses here")
+    number = randrange(10*difficulty)
+    while 1:
+        try:
+            msg = await client.wait_for('message', check=check(ctx.author), timeout=30)
+            guess = 10
+            while guess != 0:
+                await channel.send(f'Pick a number between 1 and {10*difficulty}')
+                msg = await client.wait_for('message', check=check, timeout=30)
+                attempt = int(msg.content)
+                if attempt > number:
+                    await channel.send(str(guess) + ' guesses left...')
+                    await asyncio.sleep(1)
+                    await channel.send('Try going lower')
+                    await asyncio.sleep(1)
+                    guess -= 1
+                elif attempt < number:
+                    await channel.send(str(guess) + ' guesses left...')
+                    await asyncio.sleep(1)
+                    await channel.send('Try going higher')
+                    await asyncio.sleep(1)
+                    guess -=1
+                elif attempt == number:
+                    await channel.send('You guessed it! Good job!')
+                    break
+        except asyncio.TimeoutError:
+            continue
 
 async def cleanupEmbed(embed:discord.Embed):
     embed.set_footer(text="I am a bot and this action was performed automatically. Please contact the moderators of this Bot if you have any questions or concerns")
@@ -111,6 +183,8 @@ async def on_member_join(member):
     with open("levels.json") as f:
         users = json.load(f)
 
+
+
 @client.command()
 async def invite(ctx):
     await ctx.author.send("Invite ATOM here: :link: https://discord.com/api/oauth2/authorize?client_id=891758172660977725&permissions=536870383095&redirect_uri=http%3A%2F%2F127.0.0.1%3A18253%2Foauth%2Fdiscord&scope=bot%20applications.commands")
@@ -135,10 +209,6 @@ async def prefix(ctx,pre="a!"):
 async def on_message(message):
     
     await client.process_commands(message)
-
-@client.group(invoke_without_command=True)
-async def help(ctx):
-    embed = discord.Embed(title=f"Atom | ")
 
 
 @client.command()
@@ -195,7 +265,7 @@ async def premium(ctx):
 
 @premium.command()
 async def perks(ctx):
-    await ctx.send("**Premium Perks**:\n - Priority Queue\n - 24/7 Music\n - Giveaway System\n")
+    await ctx.send("**Premium Perks**:\n - Priority Queue\n - 24/7 Music\n - Giveaway System\n - Premium Bot")
 
 @premium.command()
 async def status(ctx):
@@ -209,7 +279,7 @@ async def activate(ctx,*,coupon):
     with open("config.json") as f:
         config = json.load(f)
 
-    if not coupon=="ATOMICP":
+    if not coupon=="currently active coupon":
         return await ctx.send(":x: Bad Coupon")
     config[str(ctx.guild.id)]["has_premium"] = True
     await ctx.send(":white_check_mark: Okay! Premium has been activated.")
@@ -219,7 +289,34 @@ async def activate(ctx,*,coupon):
 
 @client.command()
 async def help(ctx):
-    embed = discord.Embed(title="")
+    embed = discord.Embed(title=f"Atom | {get_prefix(client,ctx)} |Help for {ctx.guild.name}")
+    embed.description="[Command List](https://github.com/Stift007/atombot/blob/main/README.MD)\n[Dashboard](https://atom.bot/)\n"
+    await ctx.send(embed=embed)
+
+@client.command()
+@commands.has_permissions(manage_channels=True)
+async def nuke(ctx):
+    categ = ctx.channel.category
+    name = ctx.channel.name
+    await ctx.channel.delete()
+    channel = await categ.create_text_channel(name=name)
+    await channel.send("https://media0.giphy.com/media/oe33xf3B50fsc/200.gif")
+
+@client.command()
+async def server(ctx,guild_id=None):
+    if not guild_id:
+        guild=ctx.guild
+    else:
+        guild = client.get_guild(guild_id)
+    embed = discord.Embed(title=f'Statistics for {guild}')
+    embed.add_field(name="General Info",value=f'❯ ID: {guild.id}\n❯ My Prefix: {get_prefix(client,ctx)}\n❯ Owner: {guild.owner}\n❯ Members: {guild.member_count}\n❯ Region: {guild.region}\n',inline=False)
+    embed.add_field(name="General Info",value=f'❯ Roles: {len(guild.roles)}\n❯ Text Channels: {len(guild.text_channels)}\n❯ Voice Channels: {len(guild.text_channels)}',inline=False)
+
+    await ctx.send(embed=await cleanupEmbed(embed))
+
+@client.command()
+async def support(ctx):
+    await ctx.author.send("Join the Support Server: \n:link: https://discord.gg/H69C53eB")
 
 client.ipc.start()
-client.run("TOKEN")
+client.run("Bot's Token")
