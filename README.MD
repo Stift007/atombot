@@ -16,3 +16,4 @@ so much more!
 - `a!prefix <prefix>` : Set the Prefix
 - `a!invite` : Invite the Bot
 - `a!server <optional:guild id>` : See Server Info
+- `a!prefix <prefix>` : Set the Server's Prefix
